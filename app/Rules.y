@@ -136,3 +136,121 @@ data Token
 %nonassoc '[' ']'
 %nonassoc '{' '}'
 %nonassoc '<-' '..' '//'
+
+
+%%
+Script  : Decls { Script $1 }
+Decls   : Decl Decls { $1 : $2 }
+        | { [] }
+
+Decl    : Def { [$1] }
+        | TDef { [$1] }
+        | Spec { [$1] }
+        | LibDir { [$1] }
+
+Def     : FnForm '=' Rhs { Def $1 $3 }
+        | Pat '=' Rhs { Def $1 $3 }
+
+FnForm  : Var Formals { FnForm $1 $2 }
+        | Pat '$' Var Pat { FnForm $1 [VarPat $3] }
+
+TDef    : TForm '::=' Type { TDef $1 $3 }
+        | 'abstype' TFormList 'with' Sig { TDefAbsType $2 $4 }
+
+TForm   : Typename TypeVarList { TForm $1 $2 }
+        | TypeVar '*' Typename TypeVarList { TFormAbstype $1 $3 $4 }
+
+TypeVarList : { [] }
+            | TypeVar TypeVarList { $1 : $2 }
+
+Formals : Var FormalList { [$1] ++ $2 }
+        | Pat '$' Var Pat FormalList { VarPat $3 : $5 }
+
+FormalList : /* empty */ { [] }
+           | Formal FormalList { $1 : $2 }
+
+Formal  : Var { VarPat $1 }
+        | Constructor { ConstrPat $1 }
+        | Literal1 { LiteralPat $1 }
+        | '(' PatList? ')' { TuplePat $2 }
+        | '[' PatList? ']' { ListPat $2 }
+
+PatList : Pat ',' PatList { $1 : $3 }
+        | Pat { [$1] }
+
+Rhs     : SimpleRhs ( ';' | 'cases' ) Cases { Rhs $1 $3 }
+        | SimpleRhs ';' { SimpleRhs $1 [] }
+
+Cases   : Alt (';' | '=' ) Cases { $1 : $3 }
+        | LastCase { [$1] }
+
+Alt     : Exp (',' 'if'? Exp) { Alt $1 (Just $3) }
+        | Exp ',' 'otherwise' { Alt $1 Nothing }
+
+LastCase : LastAlt Whdefs? { LastCase $1 $2 }
+
+LastAlt : Exp (',' 'if'? Exp) { LastAlt $1 (Just $3) }
+        | Exp ',' 'otherwise' { LastAlt $1 Nothing }
+
+Whdefs  : 'where' Def Defs { [$2] ++ $3 }
+
+Exp     : E1 ExpList? { buildExp $1 $2 }
+
+ExpList : Exp ',' ExpList { $1 : $3 }
+        | /* empty */ { [] }
+
+E1      : Simple SimpleList { buildE1 $1 $2 }
+        | Prefix1 E1 { PrefixE1 $1 $2 }
+        | InfixE1 E1 { InfixE1 $1 $2 }
+
+Simple  : Var { VarExp $1 }
+        | Constructor { ConstrExp $1 }
+        | Literal { LiteralExp $1 }
+        | ReadVals { ReadValsExp }
+        | Show { ShowExp }
+        | '(' Infix1 E1 ')' { ParenExp $2 }
+        | '(' E1 'infix' E1 ')' { InfixExp $2 $4 }
+
+SimpleList : { [] }
+           | Simple SimpleList { $1 : $2 }
+
+Prefix1 : '~' { Prefix1 '~' }
+        | '#' { Prefix1 '#' }
+
+Infix1  : '++' | '--' | ':' | '\/' | '&' | '>' | '>=' | '=' | '~=' | '<=' | '<' | '+' | '*' | '/' | 'div' | 'mod' | '^' | '.' | '!' | '$identifier' | '$IDENTIFIER'
+
+InfixE1 : Infix1 { Infix1Exp $1 }
+        | '-' { Infix1Exp '-' }
+
+Prefix : Prefix1 { Prefix1Exp $1 }
+        | '-' { Prefix1Exp '-' }
+
+InfixExp : E1 { Infix1Exp $1 }
+          | InfixE1 E1 { Infix1E1Exp $1 $2 }
+
+PrefixExp : E1 { Prefix1Exp $1 }
+           | Prefix E1 { Prefix1E1Exp $1 $2 }
+
+Literal : Numeral { NumeralLit $1 }
+        | CharConst { CharConstLit $1 }
+        | StringConst { StringConstLit $1 }
+
+Literal1 : Literal { $1 }
+         | FloatNum { FloatNumLit $1 }
+
+TFormList : Typename TypeVarList { [$1] ++ $2 }
+           | Typename TypeVarList '==' Type { [$1] ++ $2 ++ [$4] }
+           | Typename TypeVarList '::=' Type { [$1] ++ $2 ++ [$4] }
+
+Sig     : Spec SpecList { buildSig $1 $2 }
+
+SpecList : Spec SpecList { $1 : $2 }
+         | { [] }
+
+Spec    : VarList '::' Type { VarListSpec $1 $3 }
+        | TFormList '::' Type { TFormListSpec $1 $3 }
+
+VarList : Var { [VarExp $1] }
+        | VarList ',' VarList { VarExp $1 : $3 }
+
+Comment : Comment { Comment $1 }
