@@ -119,3 +119,20 @@ data Token
     | FormFeed { FormFeed }
     | Space { Space }
     | Comment { Comment $$ }
+
+%left '+' '-'
+%left '*' '/'
+%left '^'
+%right '!'
+%right '$' '-'
+%nonassoc '.' ':'
+%nonassoc '==' '~=' '<=' '<' '>' '>='
+%nonassoc '->' ';' ','
+%nonassoc '|'
+%nonassoc '++' '--' '\/' '&' '>'
+%nonassoc '=='
+%nonassoc ':=' '::=' '::' '=>'
+%nonassoc '$$' '$-' '$+'
+%nonassoc '[' ']'
+%nonassoc '{' '}'
+%nonassoc '<-' '..' '//'
