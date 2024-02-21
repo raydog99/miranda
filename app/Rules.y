@@ -254,3 +254,63 @@ VarList : Var { [VarExp $1] }
         | VarList ',' VarList { VarExp $1 : $3 }
 
 Comment : Comment { Comment $1 }
+
+%%
+{
+parseError :: [Token] -> a
+parseError _ = error "Parse error"
+
+buildExp :: E1 -> [E1] -> Exp
+buildExp e1 [] = e1
+buildExp e1 expList = foldl Infix1Exp e1 expList
+
+buildE1 :: Simple -> [Simple] -> E1
+buildE1 simple [] = simple
+buildE1 simple simpleList = foldl InfixE1 simple simpleList
+
+buildSig :: Spec -> [Spec] -> Sig
+buildSig spec specList = foldl combineSpecs spec specList
+  where
+    combineSpecs (VarListSpec vars1 type1) (VarListSpec vars2 type2) =
+        VarListSpec (vars1 ++ vars2) type1
+    combineSpecs (TFormListSpec tform1 type1) (TFormListSpec tform2 type2) =
+        TFormListSpec (tform1 ++ tform2) type1
+
+lexer :: String -> [Token]
+lexer [] = []
+lexer ('\n':cs) = NewLine : lexer cs
+lexer ('\t':cs) = Tab : lexer cs
+lexer ('\f':cs) = FormFeed : lexer cs
+lexer (' ':cs) = Space : lexer cs
+lexer ('|':'|':cs) = let (comment, rest) = span (/= '\n') cs in Comment comment : lexer rest
+lexer ('|':cs) = VerticalBar : lexer cs
+
+lexer (c:cs)
+    | isAlpha c = lexIdentifier (c:cs)
+    | isDigit c = lexNumeral (c:cs)
+    | otherwise = lexDelimiter (c:cs)
+
+lexIdentifier cs =
+    let (ident, rest) = span (\c -> isAlphaNum c || c == '_' || c == '\'') cs
+    in case map toUpper ident of
+        "ABSTYPE" -> IDENTIFIER "abstype" : lexer rest
+        "IF" -> If : lexer rest
+        "OTHERWISE" -> Otherwise : lexer rest
+        "READVALS" -> ReadVals : lexer rest
+        "SHOW" -> Show : lexer rest
+        "TYPE" -> Type : lexer rest
+        "WHERE" -> Where : lexer rest
+        "WITH" -> With : lexer rest
+        -- Add more keywords and identifiers as needed
+        _ -> Identifier ident : lexer rest
+
+lexNumeral cs =
+    let (num, rest) = span isDigit cs
+    in Numeral (read num) : lexer rest
+
+lexDelimiter cs =
+    case cs of
+        '-':'>':rest -> RightArrow : lexer rest
+        ':'::'=':rest -> ColonEq : lexer rest
+        _ -> Delimiter [head cs] : lexer (tail cs)
+}
