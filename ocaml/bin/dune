@@ -1,0 +1,4 @@
+(executable
+ (public_name miranda)
+ (name main)
+ (libraries miranda))

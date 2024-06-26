@@ -1,4 +1,4 @@
-# Revision history for Miranda
+# Revision history for miranda
 
 ## 0.1.0.0 -- YYYY-mm-dd
 

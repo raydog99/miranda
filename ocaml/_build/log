@@ -1,0 +1,5 @@
+# dune init proj miranda
+# OCAMLPARAM: unset
+# Shared cache: disabled
+# Workspace root: /Users/raymonddeng/Desktop/github/Miranda/miranda
+# Auto-detected concurrency: 8
